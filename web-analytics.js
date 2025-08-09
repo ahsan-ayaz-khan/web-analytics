@@ -1,0 +1,394 @@
+/**
+ * Website Metrics and Analytics Easter Egg By Ahsan Ayaz
+ * Universal CDN script that automatically adds portfolio easter egg to any website
+ * Just include this script and it will find copyright elements and add the easter egg
+ */
+
+(function () {
+    'use strict';
+
+    // ================================
+    // CONFIGURATION - EDIT THESE VALUES
+    // ================================
+
+    // Your portfolio URL (encode it for security)
+    const PORTFOLIO_URL = 'https://github.com/ahsan-ayaz-khan'; // Replace with your actual portfolio URL
+
+    // Easter egg settings
+    const CLICK_COUNT = 5; // Number of clicks required
+    const RESET_TIMEOUT = 3000; // Time before click counter resets (ms)
+    const MODAL_TIMEOUT = 10000; // Time before modal disappears (ms)
+
+    // Keywords to search for in text content
+    const COPYRIGHT_KEYWORDS = [
+        'copyright', '©', 'all rights reserved', 'reserved', 'inc', 'ltd', 'llc', 'corp'
+    ];
+
+    // ================================
+    // MAIN EASTER EGG FUNCTIONALITY
+    // ================================
+
+    let clickCounters = new WeakMap(); // Store click counts for each element
+    let resetTimers = new WeakMap(); // Store reset timers for each element
+    let activeModal = null; // Track active modal
+
+    /**
+     * Create and show the easter egg modal
+     */
+    function showEasterEggModal() {
+        // Remove existing modal if any
+        if (activeModal) {
+            activeModal.remove();
+        }
+
+        // Create modal element
+        const modal = document.createElement('div');
+        modal.id = 'easter-egg-modal-' + Date.now();
+        modal.style.cssText = `
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            background: rgba(0, 0, 0, 0.95) !important;
+            color: white !important;
+            padding: 30px !important;
+            border-radius: 15px !important;
+            text-align: center !important;
+            z-index: 999999 !important;
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
+            font-family: Arial, sans-serif !important;
+            max-width: 400px !important;
+            width: 90% !important;
+            animation: easterEggFadeIn 0.5s ease-out !important;
+            backdrop-filter: blur(5px) !important;
+        `;
+
+        // Modal content
+        modal.innerHTML = `
+            <div style="margin-bottom: 20px !important;">
+                <div style="font-size: 50px !important; margin-bottom: 10px !important;">🎉</div>
+                <h3 style="margin: 0 0 15px 0 !important; color: #4CAF50 !important; font-size: 24px !important;">
+                    Easter Egg Found!
+                </h3>
+                <p style="margin: 0 0 20px 0 !important; font-size: 16px !important; line-height: 1.4 !important;">
+                    Congratulations! You discovered the hidden secret.<br>
+                    Check out my portfolio:
+                </p>
+            </div>
+            
+            <a href="${PORTFOLIO_URL}" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               style="
+                   color: #4CAF50 !important;
+                   text-decoration: none !important;
+                   font-size: 18px !important;
+                   font-weight: bold !important;
+                   border: 2px solid #4CAF50 !important;
+                   padding: 12px 25px !important;
+                   border-radius: 8px !important;
+                   display: inline-block !important;
+                   transition: all 0.3s ease !important;
+                   background: transparent !important;
+               "
+               onmouseover="this.style.background='#4CAF50'; this.style.color='white';"
+               onmouseout="this.style.background='transparent'; this.style.color='#4CAF50';">
+                🚀 Visit My Portfolio
+            </a>
+            
+            <div style="margin-top: 20px !important;">
+                <p style="margin: 0 !important; font-size: 12px !important; opacity: 0.7 !important;">
+                    This message will disappear in <span id="countdown">${MODAL_TIMEOUT / 1000}</span> seconds...
+                </p>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        style="
+                            background: transparent !important;
+                            border: 1px solid #666 !important;
+                            color: #999 !important;
+                            padding: 5px 15px !important;
+                            border-radius: 5px !important;
+                            cursor: pointer !important;
+                            font-size: 12px !important;
+                            margin-top: 10px !important;
+                        ">
+                    Close
+                </button>
+            </div>
+        `;
+
+        // Add to body
+        document.body.appendChild(modal);
+        activeModal = modal;
+
+        // Countdown timer
+        let countdown = MODAL_TIMEOUT / 1000;
+        const countdownElement = modal.querySelector('#countdown');
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdownElement) {
+                countdownElement.textContent = countdown;
+            }
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+
+        // Auto-remove after timeout
+        setTimeout(() => {
+            if (modal && modal.parentNode) {
+                modal.remove();
+            }
+            if (modal === activeModal) {
+                activeModal = null;
+            }
+            clearInterval(countdownInterval);
+        }, MODAL_TIMEOUT);
+
+        // Click outside to close
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                modal.remove();
+                activeModal = null;
+                clearInterval(countdownInterval);
+            }
+        });
+    }
+
+    /**
+     * Add easter egg functionality to an element
+     */
+    function addEasterEgg(element) {
+        // Skip if already processed
+        if (element.hasAttribute('data-easter-egg-active')) {
+            return;
+        }
+
+        // Mark as processed
+        element.setAttribute('data-easter-egg-active', 'true');
+
+        // Initialize click counter
+        clickCounters.set(element, 0);
+
+        // Make element clickable
+        element.style.cursor = 'pointer';
+        element.style.userSelect = 'none';
+        element.style.transition = 'all 0.2s ease';
+
+        // Add click event listener
+        element.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Get current click count
+            let clickCount = clickCounters.get(element) || 0;
+            clickCount++;
+            clickCounters.set(element, clickCount);
+
+            // Clear existing reset timer
+            const existingTimer = resetTimers.get(element);
+            if (existingTimer) {
+                clearTimeout(existingTimer);
+            }
+
+            // Update title with remaining clicks
+            const remaining = CLICK_COUNT - clickCount;
+            if (remaining > 0) {
+                element.title = `${remaining} more click${remaining === 1 ? '' : 's'} to unlock...`;
+
+                // Add visual feedback
+                element.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    element.style.transform = 'scale(1)';
+                }, 100);
+            }
+
+            // Check if easter egg should trigger
+            if (clickCount >= CLICK_COUNT) {
+                element.title = '';
+                showEasterEggModal();
+                clickCounters.set(element, 0); // Reset counter
+                return;
+            }
+
+            // Set reset timer
+            const resetTimer = setTimeout(() => {
+                clickCounters.set(element, 0);
+                element.title = '';
+            }, RESET_TIMEOUT);
+
+            resetTimers.set(element, resetTimer);
+        });
+
+        // Easter egg added silently
+    }
+
+    /**
+     * Find elements that contain copyright-related text
+     */
+    function findCopyrightElements() {
+        const elements = [];
+
+        // Common selectors for footer/copyright areas
+        const selectors = [
+            'footer', '[class*="footer"]', '[id*="footer"]',
+            '[class*="copyright"]', '[id*="copyright"]',
+            '[class*="rights"]', '[class*="legal"]',
+            'small', '.small', 'p:last-child',
+            '[class*="bottom"]', '[class*="last"]'
+        ];
+
+        // Search through all selectors
+        selectors.forEach(selector => {
+            try {
+                const foundElements = document.querySelectorAll(selector);
+                foundElements.forEach(el => {
+                    const text = el.textContent.toLowerCase();
+
+                    // Check if element contains copyright keywords
+                    const hasKeyword = COPYRIGHT_KEYWORDS.some(keyword =>
+                        text.includes(keyword.toLowerCase())
+                    );
+
+                    if (hasKeyword && !elements.includes(el)) {
+                        elements.push(el);
+                    }
+                });
+            } catch (e) {
+                // Ignore invalid selectors
+            }
+        });
+
+        // Fallback: search all text nodes for copyright symbols
+        if (elements.length === 0) {
+            const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            let node;
+            while (node = walker.nextNode()) {
+                const text = node.textContent.toLowerCase();
+                const hasKeyword = COPYRIGHT_KEYWORDS.some(keyword =>
+                    text.includes(keyword.toLowerCase())
+                );
+
+                if (hasKeyword && node.parentElement) {
+                    const parent = node.parentElement;
+                    if (!elements.includes(parent)) {
+                        elements.push(parent);
+                    }
+                }
+            }
+        }
+
+        return elements;
+    }
+
+    /**
+     * Initialize easter eggs on found elements
+     */
+    function initializeEasterEggs() {
+        const elements = findCopyrightElements();
+
+        if (elements.length === 0) {
+            console.log('🔍 No copyright elements found for easter egg');
+            return;
+        }
+
+        // Elements found, adding easter eggs silently
+
+        elements.forEach(element => {
+            addEasterEgg(element);
+        });
+    }
+
+    /**
+     * Add required CSS animations
+     */
+    function addStyles() {
+        if (document.getElementById('easter-egg-styles')) {
+            return; // Already added
+        }
+
+        const style = document.createElement('style');
+        style.id = 'easter-egg-styles';
+        style.textContent = `
+            @keyframes easterEggFadeIn {
+                from {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.5);
+                }
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+            
+            [data-easter-egg-active]:hover {
+                opacity: 0.8 !important;
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Main initialization function
+     */
+    function init() {
+        // Add required styles
+        addStyles();
+
+        // Initialize easter eggs
+        initializeEasterEggs();
+
+        // Re-scan periodically for dynamic content
+        setInterval(initializeEasterEggs, 5000);
+
+        // Watch for DOM changes
+        if (window.MutationObserver) {
+            const observer = new MutationObserver(function (mutations) {
+                let shouldRescan = false;
+
+                mutations.forEach(function (mutation) {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        shouldRescan = true;
+                    }
+                });
+
+                if (shouldRescan) {
+                    setTimeout(initializeEasterEggs, 1000);
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        // Easter egg script loaded silently
+    }
+
+    // ================================
+    // AUTO-INITIALIZATION
+    // ================================
+
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        // DOM already loaded
+        init();
+    }
+
+    // Also try after a short delay to catch late-loading content
+    setTimeout(init, 2000);
+
+    // Expose global function for manual initialization if needed
+    window.initPortfolioEasterEgg = init;
+
+})();
